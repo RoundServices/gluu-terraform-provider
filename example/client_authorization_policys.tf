@@ -1,15 +1,6 @@
-resource gluu_realm test_authorization {
-  realm                = "test_authorization"
-  enabled              = true
-  display_name         = "foo"
-  account_theme        = "base"
-  access_code_lifespan = "30m"
-}
-
 resource gluu_openid_client test {
   client_id                = "test-openid-client"
   name                     = "test-openid-client"
-  realm_id                 = gluu_realm.test_authorization.id
   description              = "a test openid client"
   standard_flow_enabled    = true
   service_accounts_enabled = true
@@ -28,13 +19,11 @@ resource gluu_openid_client test {
 #
 
 resource gluu_role test_authorization {
-  realm_id = gluu_realm.test_authorization.id
   name     = "aggregate_policy_role"
 }
 
 resource gluu_openid_client_role_policy test {
   resource_server_id = gluu_openid_client.test.resource_server_id
-  realm_id           = gluu_realm.test_authorization.id
   name               = "gluu_openid_client_role_policy"
   decision_strategy  = "UNANIMOUS"
   logic              = "POSITIVE"
@@ -47,7 +36,6 @@ resource gluu_openid_client_role_policy test {
 
 resource gluu_openid_client_aggregate_policy test {
   resource_server_id = gluu_openid_client.test.resource_server_id
-  realm_id           = gluu_realm.test_authorization.id
   name               = "gluu_openid_client_aggregate_policy"
   decision_strategy  = "UNANIMOUS"
   logic              = "POSITIVE"
@@ -60,7 +48,6 @@ resource gluu_openid_client_aggregate_policy test {
 
 resource gluu_openid_client_client_policy test {
   resource_server_id = gluu_openid_client.test.resource_server_id
-  realm_id           = gluu_realm.test_authorization.id
   name               = "gluu_openid_client_client_policy"
   decision_strategy  = "AFFIRMATIVE"
   logic              = "POSITIVE"
@@ -72,13 +59,11 @@ resource gluu_openid_client_client_policy test {
 #
 
 resource gluu_group test {
-  realm_id = gluu_realm.test_authorization.id
   name     = "foo"
 }
 
 resource gluu_openid_client_group_policy test {
   resource_server_id = gluu_openid_client.test.resource_server_id
-  realm_id           = gluu_realm.test_authorization.id
   name               = "client_group_policy_test"
   groups {
     id              = gluu_group.test.id
@@ -96,7 +81,6 @@ resource gluu_openid_client_group_policy test {
 
 resource gluu_openid_client_js_policy test {
   resource_server_id = gluu_openid_client.test.resource_server_id
-  realm_id           = gluu_realm.test_authorization.id
   name               = "client_js_policy_test"
   logic              = "POSITIVE"
   decision_strategy  = "UNANIMOUS"
@@ -110,13 +94,11 @@ resource gluu_openid_client_js_policy test {
 #
 
 resource gluu_role test_authorization2 {
-  realm_id = gluu_realm.test_authorization.id
   name     = "new_role"
 }
 
 resource gluu_openid_client_role_policy test1 {
   resource_server_id = gluu_openid_client.test.resource_server_id
-  realm_id           = gluu_realm.test_authorization.id
   name               = "gluu_openid_client_role_policy1"
   decision_strategy  = "AFFIRMATIVE"
   logic              = "POSITIVE"
@@ -133,7 +115,6 @@ resource gluu_openid_client_role_policy test1 {
 
 resource gluu_openid_client_time_policy test {
   resource_server_id = gluu_openid_client.test.resource_server_id
-  realm_id           = gluu_realm.test_authorization.id
   name               = "%s"
   not_on_or_after    = "2500-12-12 01:01:11"
   not_before         = "2400-12-12 01:01:11"
@@ -156,7 +137,6 @@ resource gluu_openid_client_time_policy test {
 #
 
 resource gluu_user test {
-  realm_id = gluu_realm.test_authorization.id
   username = "test-user"
 
   email      = "test-user@fakedomain.com"
@@ -166,7 +146,6 @@ resource gluu_user test {
 
 resource gluu_openid_client_user_policy test {
   resource_server_id = gluu_openid_client.test.resource_server_id
-  realm_id           = gluu_realm.test_authorization.id
   name               = "client_user_policy_test"
   users              = [gluu_user.test.id]
   logic              = "POSITIVE"
@@ -176,7 +155,6 @@ resource gluu_openid_client_user_policy test {
 # users permissions
 
 resource "gluu_users_permissions" "my_permission" {
-  realm_id = gluu_realm.test_authorization.id
 
   view_scope {
     policies          = [
@@ -196,7 +174,6 @@ resource "gluu_users_permissions" "my_permission" {
 }
 
 resource "gluu_openid_client_permissions" "my_permission" {
-  realm_id  = gluu_realm.test_authorization.id
   client_id = gluu_openid_client.test.id
 
   view_scope {

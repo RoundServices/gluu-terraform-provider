@@ -25,7 +25,7 @@ func (gluuClient *GluuClient) ValidateOpenidClient(ctx context.Context, client *
 
 func (gluuClient *GluuClient) NewOpenidClient(ctx context.Context, client *OpenidClient) error {
 
-	_, _, err := gluuClient.post(ctx, "/jans-config-api/api/v1/openid/clients", client)
+	_, _, err := gluuClient.post(ctx, "/clients", client)
 	if err != nil {
 		return err
 	}
@@ -33,11 +33,11 @@ func (gluuClient *GluuClient) NewOpenidClient(ctx context.Context, client *Openi
 	return nil
 }
 
-func (gluuClient *GluuClient) GetOpenidClients(ctx context.Context, realmId string, withSecrets bool) ([]*OpenidClient, error) {
+func (gluuClient *GluuClient) GetOpenidClients(ctx context.Context, withSecrets bool) ([]*OpenidClient, error) {
 	var clients []*OpenidClient
 	var clientSecret OpenidClientSecret
 
-	err := gluuClient.get(ctx, "/jans-config-api/api/v1/openid/clients", &clients, nil)
+	err := gluuClient.get(ctx, "/clients", &clients, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +53,11 @@ func (gluuClient *GluuClient) GetOpenidClients(ctx context.Context, realmId stri
 	return clients, nil
 }
 
-func (gluuClient *GluuClient) GetOpenidClient(ctx context.Context, realmId, id string) (*OpenidClient, error) {
+func (gluuClient *GluuClient) GetOpenidClient(ctx context.Context, id string) (*OpenidClient, error) {
 	var client OpenidClient
 	var clientSecret OpenidClientSecret
 
-	err := gluuClient.get(ctx, fmt.Sprintf("/jans-config-api/api/v1/openid/clients/%s", client.Inum), &client, nil)
+	err := gluuClient.get(ctx, fmt.Sprintf("/clients/%s", client.Inum), &client, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -69,10 +69,10 @@ func (gluuClient *GluuClient) GetOpenidClient(ctx context.Context, realmId, id s
 
 func (gluuClient *GluuClient) UpdateOpenidClient(ctx context.Context, client *OpenidClient) error {
 
-	return gluuClient.put(ctx, fmt.Sprintf("/jans-config-api/api/v1/openid/clients/%s", client.Inum), client)
+	return gluuClient.put(ctx, fmt.Sprintf("/clients/%s", client.Inum), client)
 }
 
 func (gluuClient *GluuClient) DeleteOpenidClient(ctx context.Context, client *OpenidClient) error {
-	return gluuClient.delete(ctx, fmt.Sprintf("/jans-config-api/api/v1/openid/clients/%s", client.Inum), nil)
+	return gluuClient.delete(ctx, fmt.Sprintf("/clients/%s", client.Inum), nil)
 }
 

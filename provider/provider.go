@@ -39,11 +39,6 @@ func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 				Type:        schema.TypeString,
 				DefaultFunc: schema.EnvDefaultFunc("GLUU_PASSWORD", nil),
 			},
-			"realm": {
-				Optional:    true,
-				Type:        schema.TypeString,
-				DefaultFunc: schema.EnvDefaultFunc("GLUU_REALM", "master"),
-			},
 			"url": {
 				Type:        schema.TypeString,
 				Required:    true,
@@ -100,7 +95,6 @@ func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 		clientSecret := data.Get("client_secret").(string)
 		username := data.Get("username").(string)
 		password := data.Get("password").(string)
-		realm := data.Get("realm").(string)
 		initialLogin := data.Get("initial_login").(bool)
 		clientTimeout := data.Get("client_timeout").(int)
 		tlsInsecureSkipVerify := data.Get("tls_insecure_skip_verify").(bool)
@@ -114,7 +108,7 @@ func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 
 		userAgent := fmt.Sprintf("HashiCorp Terraform/%s (+https://www.terraform.io) Terraform Plugin SDK/%s", provider.TerraformVersion, meta.SDKVersionString())
 
-		gluuClient, err := gluu.NewGluuClient(ctx, url, basePath, clientId, clientSecret, realm, username, password, initialLogin, clientTimeout, rootCaCertificate, tlsInsecureSkipVerify, userAgent, additionalHeaders)
+		gluuClient, err := gluu.NewGluuClient(ctx, url, basePath, clientId, clientSecret, username, password, initialLogin, clientTimeout, rootCaCertificate, tlsInsecureSkipVerify, userAgent, additionalHeaders)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,

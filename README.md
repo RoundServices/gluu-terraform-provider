@@ -78,7 +78,6 @@ that was created via `make local`:
 GLUU_CLIENT_ID=terraform \
 GLUU_CLIENT_SECRET=884e0f95-0f42-4a63-9b1f-94274655669e \
 GLUU_CLIENT_TIMEOUT=5 \
-GLUU_REALM=master \
 GLUU_URL="http://localhost:8080" \
 make testacc
 ```

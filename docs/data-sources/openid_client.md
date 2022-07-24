@@ -9,22 +9,14 @@ This data source can be used to fetch properties of a Gluu OpenID client for usa
 ## Example Usage
 
 ```hcl
-data "gluu_openid_client" "realm_management" {
-  realm_id  = "my-realm"
-  client_id = "realm-management"
+data "gluu_openid_client" "management" {
+  client_id = "management"
 }
 
-# use the data source
-data "gluu_role" "admin" {
-  realm_id  = "my-realm"
-  client_id = data.gluu_openid_client.realm_management.id
-  name      = "realm-admin"
-}
 ```
 
 ## Argument Reference
 
-- `realm_id` - (Required) The realm id.
 - `client_id` - (Required) The client id (not its unique ID).
 
 ## Attributes Reference

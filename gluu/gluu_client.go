@@ -25,7 +25,6 @@ import (
 
 type GluuClient struct {
 	baseUrl           string
-	realm             string
 	clientCredentials *ClientCredentials
 	httpClient        *http.Client
 	initialLogin      bool
@@ -36,7 +35,7 @@ type GluuClient struct {
 }
 
 type ClientCredentials struct {
-	ClientId     string
+	Inum     string
 	ClientSecret string
 	Username     string
 	Password     string
@@ -47,13 +46,13 @@ type ClientCredentials struct {
 }
 
 const (
-	apiUrl   = ""
+	apiUrl   = "/jans-config-api/api/v1/openid"
 	tokenUrl = "/jans-auth/restv1/token"
 )
 
-func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret, realm, username, password string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, userAgent string, additionalHeaders map[string]string) (*GluuClient, error) {
+func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret, username, password string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, userAgent string, additionalHeaders map[string]string) (*GluuClient, error) {
 	clientCredentials := &ClientCredentials{
-		ClientId:     clientId,
+		Inum:     clientId,
 		ClientSecret: clientSecret,
 	}
 	if password != "" && username != "" {
@@ -80,7 +79,6 @@ func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret, r
 		clientCredentials: clientCredentials,
 		httpClient:        httpClient,
 		initialLogin:      initialLogin,
-		realm:             realm,
 		userAgent:         userAgent,
 		additionalHeaders: additionalHeaders,
 	}
@@ -102,7 +100,7 @@ func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret, r
 }
 
 func (gluuClient *GluuClient) login(ctx context.Context) error {
-	accessTokenUrl := fmt.Sprintf(tokenUrl, gluuClient.baseUrl, gluuClient.realm)
+	accessTokenUrl := fmt.Sprintf(tokenUrl, gluuClient.baseUrl)
 	accessTokenData := gluuClient.getAuthenticationFormData()
 
 	tflog.Debug(ctx, "Login request", map[string]interface{}{
@@ -154,7 +152,7 @@ func (gluuClient *GluuClient) login(ctx context.Context) error {
 }
 
 func (gluuClient *GluuClient) refresh(ctx context.Context) error {
-	refreshTokenUrl := fmt.Sprintf(tokenUrl, gluuClient.baseUrl, gluuClient.realm)
+	refreshTokenUrl := fmt.Sprintf(tokenUrl, gluuClient.baseUrl)
 	refreshTokenData := gluuClient.getAuthenticationFormData()
 
 	tflog.Debug(ctx, "Refresh request", map[string]interface{}{
@@ -211,17 +209,13 @@ func (gluuClient *GluuClient) refresh(ctx context.Context) error {
 
 func (gluuClient *GluuClient) getAuthenticationFormData() url.Values {
 	authenticationFormData := url.Values{}
-	authenticationFormData.Set("client_id", gluuClient.clientCredentials.ClientId)
+	authenticationFormData.Set("client_id", gluuClient.clientCredentials.Inum)
 	authenticationFormData.Set("grant_type", gluuClient.clientCredentials.GrantType)
+	authenticationFormData.Set("scope", "https://jans.io/oauth/config/openid/clients.readonly https://jans.io/oauth/config/openid/clients.write")
 
 	if gluuClient.clientCredentials.GrantType == "password" {
 		authenticationFormData.Set("username", gluuClient.clientCredentials.Username)
 		authenticationFormData.Set("password", gluuClient.clientCredentials.Password)
-
-		if gluuClient.clientCredentials.ClientSecret != "" {
-			authenticationFormData.Set("client_secret", gluuClient.clientCredentials.ClientSecret)
-		}
-
 	} else if gluuClient.clientCredentials.GrantType == "client_credentials" {
 		authenticationFormData.Set("client_secret", gluuClient.clientCredentials.ClientSecret)
 	}
@@ -284,7 +278,6 @@ func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Req
 	}
 
 	// Unauthorized: Token could have expired
-	// Forbidden: After creating a realm, following GETs for the realm return 403 until you refresh
 	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
 		tflog.Debug(ctx, "Got unexpected response, attempting refresh", map[string]interface{}{
 			"status": response.Status,

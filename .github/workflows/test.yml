@@ -139,7 +139,6 @@ jobs:
           GLUU_CLIENT_ID: terraform
           GLUU_CLIENT_SECRET: 884e0f95-0f42-4a63-9b1f-94274655669e
           GLUU_CLIENT_TIMEOUT: 30
-          GLUU_REALM: master
           GLUU_URL: "http://localhost:8080"
           GLUU_TEST_PASSWORD_GRANT: "true"
           GLUU_VERSION: ${{ steps.gluu-version.outputs.result }}
