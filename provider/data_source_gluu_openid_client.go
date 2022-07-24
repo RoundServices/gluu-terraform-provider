@@ -15,21 +15,21 @@ func dataSourceGluuOpenidClient() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"dn": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"inum": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"displayName": {
 				Type:     schema.TypeString,
-				Computed: true,
+				Optional: true,
 			},
 			"redirectUris": {
 				Type:     schema.TypeSet,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
-				Computed: true,
+				Required: true,
 			},
 		},
 	}
@@ -42,7 +42,7 @@ func dataSourceGluuOpenidClientRead(ctx context.Context, data *schema.ResourceDa
 
 	client, err := gluuClient.GetOpenidClient(ctx, clientId)
 	if err != nil {
-		return handleNotFoundError(ctx, err, data)
+		return diag.FromErr(err)
 	}
 
 	err = setOpenidClientData(ctx, gluuClient, data, client)

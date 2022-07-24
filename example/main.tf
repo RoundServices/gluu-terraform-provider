@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     gluu = {
-      source  = "terraform.local/RoundServices/gluu"
-      version = ">= 3.0"
+      source  = "RoundServices/gluu"
+      version = ">= 1.0.0"
     }
   }
 }
