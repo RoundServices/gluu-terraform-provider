@@ -5,16 +5,19 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"github.com/hashicorp/go-version"
 
@@ -28,7 +31,6 @@ type GluuClient struct {
 	clientCredentials *ClientCredentials
 	httpClient        *http.Client
 	initialLogin      bool
-	userAgent         string
 	version           *version.Version
 	additionalHeaders map[string]string
 	debug             bool
@@ -37,8 +39,6 @@ type GluuClient struct {
 type ClientCredentials struct {
 	Inum     string
 	ClientSecret string
-	Username     string
-	Password     string
 	GrantType    string
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -50,20 +50,16 @@ const (
 	tokenUrl = "/jans-auth/restv1/token"
 )
 
-func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret, username, password string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, userAgent string, additionalHeaders map[string]string) (*GluuClient, error) {
+func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, additionalHeaders map[string]string) (*GluuClient, error) {
 	clientCredentials := &ClientCredentials{
 		Inum:     clientId,
 		ClientSecret: clientSecret,
 	}
-	if password != "" && username != "" {
-		clientCredentials.Username = username
-		clientCredentials.Password = password
-		clientCredentials.GrantType = "password"
-	} else if clientSecret != "" {
+	if clientSecret != "" {
 		clientCredentials.GrantType = "client_credentials"
 	} else {
 		if initialLogin {
-			return nil, fmt.Errorf("must specify client id, username and password for password grant, or client id and secret for client credentials grant")
+			return nil, fmt.Errorf("must specify client id and secret for client credentials grant")
 		} else {
 			tflog.Warn(ctx, "missing required gluu credentials, but proceeding anyways as initial_login is false")
 		}
@@ -79,14 +75,13 @@ func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret, u
 		clientCredentials: clientCredentials,
 		httpClient:        httpClient,
 		initialLogin:      initialLogin,
-		userAgent:         userAgent,
 		additionalHeaders: additionalHeaders,
 	}
 
 	if gluuClient.initialLogin {
 		err = gluuClient.login(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to perform initial login to Gluu: %v", err)
+			return nil, fmt.Errorf("failed to perform initial login to Gluu: %v, %v, %v", err, gluuClient.additionalHeaders, gluuClient.clientCredentials)
 		}
 	}
 
@@ -100,7 +95,7 @@ func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret, u
 }
 
 func (gluuClient *GluuClient) login(ctx context.Context) error {
-	accessTokenUrl := fmt.Sprintf(tokenUrl, gluuClient.baseUrl)
+	accessTokenUrl := gluuClient.baseUrl + tokenUrl
 	accessTokenData := gluuClient.getAuthenticationFormData()
 
 	tflog.Debug(ctx, "Login request", map[string]interface{}{
@@ -117,12 +112,12 @@ func (gluuClient *GluuClient) login(ctx context.Context) error {
 	}
 
 	accessTokenRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	if gluuClient.userAgent != "" {
-		accessTokenRequest.Header.Set("User-Agent", gluuClient.userAgent)
-	}
-
+	
+	authorization := b64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", gluuClient.clientCredentials.Inum, gluuClient.clientCredentials.ClientSecret)))
+	log.Printf(authorization)
+	accessTokenRequest.Header.Set("Authorization", fmt.Sprintf("Basic %s", authorization))
 	accessTokenResponse, err := gluuClient.httpClient.Do(accessTokenRequest)
+	
 	if err != nil {
 		return err
 	}
@@ -152,7 +147,7 @@ func (gluuClient *GluuClient) login(ctx context.Context) error {
 }
 
 func (gluuClient *GluuClient) refresh(ctx context.Context) error {
-	refreshTokenUrl := fmt.Sprintf(tokenUrl, gluuClient.baseUrl)
+	refreshTokenUrl := gluuClient.baseUrl + tokenUrl
 	refreshTokenData := gluuClient.getAuthenticationFormData()
 
 	tflog.Debug(ctx, "Refresh request", map[string]interface{}{
@@ -170,9 +165,8 @@ func (gluuClient *GluuClient) refresh(ctx context.Context) error {
 
 	refreshTokenRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	if gluuClient.userAgent != "" {
-		refreshTokenRequest.Header.Set("User-Agent", gluuClient.userAgent)
-	}
+	authorization := b64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("Basic %s:%s", gluuClient.clientCredentials.Inum, gluuClient.clientCredentials.ClientSecret)))
+	refreshTokenRequest.Header.Set("Authorization", authorization)
 
 	refreshTokenResponse, err := gluuClient.httpClient.Do(refreshTokenRequest)
 	if err != nil {
@@ -209,17 +203,8 @@ func (gluuClient *GluuClient) refresh(ctx context.Context) error {
 
 func (gluuClient *GluuClient) getAuthenticationFormData() url.Values {
 	authenticationFormData := url.Values{}
-	authenticationFormData.Set("client_id", gluuClient.clientCredentials.Inum)
 	authenticationFormData.Set("grant_type", gluuClient.clientCredentials.GrantType)
 	authenticationFormData.Set("scope", "https://jans.io/oauth/config/openid/clients.readonly https://jans.io/oauth/config/openid/clients.write")
-
-	if gluuClient.clientCredentials.GrantType == "password" {
-		authenticationFormData.Set("username", gluuClient.clientCredentials.Username)
-		authenticationFormData.Set("password", gluuClient.clientCredentials.Password)
-	} else if gluuClient.clientCredentials.GrantType == "client_credentials" {
-		authenticationFormData.Set("client_secret", gluuClient.clientCredentials.ClientSecret)
-	}
-
 	return authenticationFormData
 }
 
@@ -233,10 +218,6 @@ func (gluuClient *GluuClient) addRequestHeaders(request *http.Request) {
 
 	request.Header.Set("Authorization", fmt.Sprintf("%s %s", tokenType, accessToken))
 	request.Header.Set("Accept", "application/json")
-
-	if gluuClient.userAgent != "" {
-		request.Header.Set("User-Agent", gluuClient.userAgent)
-	}
 
 	if request.Method == http.MethodPost || request.Method == http.MethodPut || request.Method == http.MethodDelete {
 		request.Header.Set("Content-type", "application/json")
@@ -308,10 +289,6 @@ func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Req
 
 	responseLogArgs := map[string]interface{}{
 		"status": response.Status,
-	}
-
-	if len(responseBody) != 0 && request.URL.Path != "/auth/admin/serverinfo" {
-		responseLogArgs["body"] = string(responseBody)
 	}
 
 	tflog.Debug(ctx, "Received response", responseLogArgs)

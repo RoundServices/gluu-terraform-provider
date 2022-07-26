@@ -3,9 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/RoundServices/gluu-terraform-provider/gluu"
 )
@@ -20,15 +18,7 @@ func resourceGluuOpenidClient() *schema.Resource {
 			StateContext: resourceGluuOpenidClientImport,
 		},
 		Schema: map[string]*schema.Schema{
-			"dn": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 			"inum": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"displayName": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -36,7 +26,7 @@ func resourceGluuOpenidClient() *schema.Resource {
 				Type:     schema.TypeSet,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Set:      schema.HashString,
-				Required: true,
+				Optional: true,
 			},
 		},
 	}
@@ -44,7 +34,7 @@ func resourceGluuOpenidClient() *schema.Resource {
 
 func getOpenidClientFromData(data *schema.ResourceData) (*gluu.OpenidClient, error) {
 	validRedirectUris := make([]string, 0)
-	validRedirectUrisData, validRedirectUrisOk := data.GetOk("redirectUris")
+	validRedirectUrisData, validRedirectUrisOk := data.GetOk("redirect_uris")
 
 
 	if validRedirectUrisOk {
@@ -55,22 +45,16 @@ func getOpenidClientFromData(data *schema.ResourceData) (*gluu.OpenidClient, err
 
 	openidClient := &gluu.OpenidClient{
 		Id:                  data.Id(),
-		Dn:                  data.Get("dn").(string),
 		Inum:                data.Get("inum").(string),
-		DisplayName:         data.Get("displayName").(string),
 		RedirectUris:        validRedirectUris,
-		ClientSecret:        data.Get("client_secret").(string),
 	}
 	return openidClient, nil
 }
 
 func setOpenidClientData(ctx context.Context, gluuClient *gluu.GluuClient, data *schema.ResourceData, client *gluu.OpenidClient) error {
 	data.SetId(client.Id)
-	data.Set("dn", client.Dn)
 	data.Set("inum", client.Inum)
-	data.Set("displayName", client.DisplayName)
-	data.Set("clientSecret", client.ClientSecret)
-	data.Set("redirectUris", client.RedirectUris)
+	data.Set("redirect_uris", client.RedirectUris)
 
 	return nil
 }
@@ -79,11 +63,6 @@ func resourceGluuOpenidClientCreate(ctx context.Context, data *schema.ResourceDa
 	gluuClient := meta.(*gluu.GluuClient)
 
 	client, err := getOpenidClientFromData(data)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	err = gluuClient.ValidateOpenidClient(ctx, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -123,11 +102,6 @@ func resourceGluuOpenidClientUpdate(ctx context.Context, data *schema.ResourceDa
 	gluuClient := meta.(*gluu.GluuClient)
 
 	client, err := getOpenidClientFromData(data)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	err = gluuClient.ValidateOpenidClient(ctx, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}

@@ -7,9 +7,7 @@ import (
 
 type OpenidClient struct {
 	Id                 string            `json:"id,omitempty"`
-	Dn                 string            `json:"dn"`
 	Inum               string            `json:"inum"`
-	DisplayName        string            `json:"displayName"`
 	ClientSecret       string            `json:"secret,omitempty"`
 	RedirectUris       []string          `json:"redirectUris"`
 }
@@ -17,10 +15,6 @@ type OpenidClient struct {
 type OpenidClientSecret struct {
 	Type  string `json:"type"`
 	Value string `json:"value"`
-}
-
-func (gluuClient *GluuClient) ValidateOpenidClient(ctx context.Context, client *OpenidClient) error {
-	return nil
 }
 
 func (gluuClient *GluuClient) NewOpenidClient(ctx context.Context, client *OpenidClient) error {

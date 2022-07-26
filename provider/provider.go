@@ -2,21 +2,16 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/meta"
 	"github.com/RoundServices/gluu-terraform-provider/gluu"
 )
 
 func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 	provider := &schema.Provider{
-		DataSourcesMap: map[string]*schema.Resource{
-			"gluu_openid_client":                      dataSourceGluuOpenidClient(),
-		},
 		ResourcesMap: map[string]*schema.Resource{
-			"gluu_openid_client":                      resourceGluuOpenidClient(),
+			"gluu_openid_client":           resourceGluuOpenidClient(),
 		},
 		Schema: map[string]*schema.Schema{
 			"client_id": {
@@ -28,16 +23,6 @@ func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 				Optional:    true,
 				Type:        schema.TypeString,
 				DefaultFunc: schema.EnvDefaultFunc("GLUU_CLIENT_SECRET", nil),
-			},
-			"username": {
-				Optional:    true,
-				Type:        schema.TypeString,
-				DefaultFunc: schema.EnvDefaultFunc("GLUU_USER", nil),
-			},
-			"password": {
-				Optional:    true,
-				Type:        schema.TypeString,
-				DefaultFunc: schema.EnvDefaultFunc("GLUU_PASSWORD", nil),
 			},
 			"url": {
 				Type:        schema.TypeString,
@@ -72,7 +57,7 @@ func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 			"base_path": {
 				Optional:    true,
 				Type:        schema.TypeString,
-				DefaultFunc: schema.EnvDefaultFunc("GLUU_BASE_PATH", "/auth"),
+				DefaultFunc: schema.EnvDefaultFunc("GLUU_BASE_PATH", ""),
 			},
 			"additional_headers": {
 				Optional: true,
@@ -93,8 +78,6 @@ func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 		basePath := data.Get("base_path").(string)
 		clientId := data.Get("client_id").(string)
 		clientSecret := data.Get("client_secret").(string)
-		username := data.Get("username").(string)
-		password := data.Get("password").(string)
 		initialLogin := data.Get("initial_login").(bool)
 		clientTimeout := data.Get("client_timeout").(int)
 		tlsInsecureSkipVerify := data.Get("tls_insecure_skip_verify").(bool)
@@ -106,9 +89,7 @@ func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 
 		var diags diag.Diagnostics
 
-		userAgent := fmt.Sprintf("HashiCorp Terraform/%s (+https://www.terraform.io) Terraform Plugin SDK/%s", provider.TerraformVersion, meta.SDKVersionString())
-
-		gluuClient, err := gluu.NewGluuClient(ctx, url, basePath, clientId, clientSecret, username, password, initialLogin, clientTimeout, rootCaCertificate, tlsInsecureSkipVerify, userAgent, additionalHeaders)
+		gluuClient, err := gluu.NewGluuClient(ctx, url, basePath, clientId, clientSecret, initialLogin, clientTimeout, rootCaCertificate, tlsInsecureSkipVerify, additionalHeaders)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,
