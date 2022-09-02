@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -17,13 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-
-	"github.com/hashicorp/go-version"
-
-	"golang.org/x/net/publicsuffix"
-
 	"github.com/hashicorp/go-retryablehttp"
+	"github.com/hashicorp/go-version"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"golang.org/x/net/publicsuffix"
 )
 
 type GluuClient struct {
@@ -37,11 +33,11 @@ type GluuClient struct {
 }
 
 type ClientCredentials struct {
-	Inum     string
+	Inum         string
 	ClientSecret string
 	GrantType    string
 	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 	TokenType    string `json:"token_type"`
 }
 
@@ -52,7 +48,7 @@ const (
 
 func NewGluuClient(ctx context.Context, url, basePath, clientId, clientSecret string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, additionalHeaders map[string]string) (*GluuClient, error) {
 	clientCredentials := &ClientCredentials{
-		Inum:     clientId,
+		Inum:         clientId,
 		ClientSecret: clientSecret,
 	}
 	if clientSecret != "" {
@@ -112,12 +108,11 @@ func (gluuClient *GluuClient) login(ctx context.Context) error {
 	}
 
 	accessTokenRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	
+
 	authorization := b64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", gluuClient.clientCredentials.Inum, gluuClient.clientCredentials.ClientSecret)))
-	log.Printf(authorization)
 	accessTokenRequest.Header.Set("Authorization", fmt.Sprintf("Basic %s", authorization))
 	accessTokenResponse, err := gluuClient.httpClient.Do(accessTokenRequest)
-	
+
 	if err != nil {
 		return err
 	}
@@ -227,12 +222,12 @@ func (gluuClient *GluuClient) addRequestHeaders(request *http.Request) {
 /**
 Sends an HTTP request and refreshes credentials on 403 or 401 errors
 */
-func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Request, body []byte) ([]byte, string, error) {
+func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Request, body []byte) ([]byte, error) {
 	if !gluuClient.initialLogin {
 		gluuClient.initialLogin = true
 		err := gluuClient.login(ctx)
 		if err != nil {
-			return nil, "", fmt.Errorf("error logging in: %s", err)
+			return nil, fmt.Errorf("error logging in: %s", err)
 		}
 	}
 
@@ -255,7 +250,7 @@ func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Req
 
 	response, err := gluuClient.httpClient.Do(request)
 	if err != nil {
-		return nil, "", fmt.Errorf("error sending request: %v", err)
+		return nil, fmt.Errorf("error sending request: %v", err)
 	}
 
 	// Unauthorized: Token could have expired
@@ -266,7 +261,7 @@ func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Req
 
 		err := gluuClient.refresh(ctx)
 		if err != nil {
-			return nil, "", fmt.Errorf("error refreshing credentials: %s", err)
+			return nil, fmt.Errorf("error refreshing credentials: %s", err)
 		}
 
 		gluuClient.addRequestHeaders(request)
@@ -276,7 +271,7 @@ func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Req
 		}
 		response, err = gluuClient.httpClient.Do(request)
 		if err != nil {
-			return nil, "", fmt.Errorf("error sending request after refresh: %v", err)
+			return nil, fmt.Errorf("error sending request after refresh: %v", err)
 		}
 	}
 
@@ -284,7 +279,7 @@ func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Req
 
 	responseBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	responseLogArgs := map[string]interface{}{
@@ -300,13 +295,13 @@ func (gluuClient *GluuClient) sendRequest(ctx context.Context, request *http.Req
 			errorMessage = fmt.Sprintf("%s Response body: %s", errorMessage, responseBody)
 		}
 
-		return nil, "", &ApiError{
+		return nil, &ApiError{
 			Code:    response.StatusCode,
 			Message: errorMessage,
 		}
 	}
 
-	return responseBody, response.Header.Get("Location"), nil
+	return responseBody, nil
 }
 
 func (gluuClient *GluuClient) get(ctx context.Context, path string, resource interface{}, params map[string]string) error {
@@ -333,7 +328,7 @@ func (gluuClient *GluuClient) getRaw(ctx context.Context, path string, params ma
 		request.URL.RawQuery = query.Encode()
 	}
 
-	body, _, err := gluuClient.sendRequest(ctx, request, nil)
+	body, err := gluuClient.sendRequest(ctx, request, nil)
 	return body, err
 }
 
@@ -345,27 +340,27 @@ func (gluuClient *GluuClient) sendRaw(ctx context.Context, path string, requestB
 		return nil, err
 	}
 
-	body, _, err := gluuClient.sendRequest(ctx, request, requestBody)
+	body, err := gluuClient.sendRequest(ctx, request, requestBody)
 
 	return body, err
 }
 
-func (gluuClient *GluuClient) post(ctx context.Context, path string, requestBody interface{}) ([]byte, string, error) {
+func (gluuClient *GluuClient) post(ctx context.Context, path string, requestBody interface{}) ([]byte, error) {
 	resourceUrl := gluuClient.baseUrl + apiUrl + path
 
 	payload, err := gluuClient.marshal(requestBody)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, resourceUrl, nil)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
-	body, location, err := gluuClient.sendRequest(ctx, request, payload)
+	body, err := gluuClient.sendRequest(ctx, request, payload)
 
-	return body, location, err
+	return body, err
 }
 
 func (gluuClient *GluuClient) put(ctx context.Context, path string, requestBody interface{}) error {
@@ -381,7 +376,7 @@ func (gluuClient *GluuClient) put(ctx context.Context, path string, requestBody 
 		return err
 	}
 
-	_, _, err = gluuClient.sendRequest(ctx, request, payload)
+	_, err = gluuClient.sendRequest(ctx, request, payload)
 
 	return err
 }
@@ -406,7 +401,7 @@ func (gluuClient *GluuClient) delete(ctx context.Context, path string, requestBo
 		return err
 	}
 
-	_, _, err = gluuClient.sendRequest(ctx, request, payload)
+	_, err = gluuClient.sendRequest(ctx, request, payload)
 
 	return err
 }

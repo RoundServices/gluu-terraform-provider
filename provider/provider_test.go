@@ -2,10 +2,10 @@ package provider
 
 import (
 	"context"
+	"github.com/RoundServices/gluu-terraform-provider/gluu"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"os"
 	"testing"
-	"github.com/RoundServices/gluu-terraform-provider/gluu"
 )
 
 var testAccProviderFactories map[string]func() (*schema.Provider, error)

@@ -3,15 +3,15 @@ package provider
 import (
 	"context"
 
+	"github.com/RoundServices/gluu-terraform-provider/gluu"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/RoundServices/gluu-terraform-provider/gluu"
 )
 
 func GluuProvider(client *gluu.GluuClient) *schema.Provider {
 	provider := &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
-			"gluu_openid_client":           resourceGluuOpenidClient(),
+			"gluu_openid_client": resourceGluuOpenidClient(),
 		},
 		Schema: map[string]*schema.Schema{
 			"client_id": {

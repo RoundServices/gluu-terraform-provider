@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/RoundServices/gluu-terraform-provider/gluu"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/RoundServices/gluu-terraform-provider/gluu"
 )
 
 type GluuBoolQuoted bool
@@ -18,7 +18,7 @@ func TestAccGluuOpenidClient_basic(t *testing.T) {
 	clientId := acctest.RandomWithPrefix("tf-acc")
 
 	resource.Test(t, resource.TestCase{
-		CheckDestroy:      testAccCheckGluuOpenidClientDestroy(),
+		CheckDestroy: testAccCheckGluuOpenidClientDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testGluuOpenidClient_basic(clientId),
@@ -34,7 +34,6 @@ func TestAccGluuOpenidClient_basic(t *testing.T) {
 	})
 }
 
-
 func TestAccGluuOpenidClient_createAfterManualDestroy(t *testing.T) {
 	t.Parallel()
 	var client = &gluu.OpenidClient{}
@@ -42,12 +41,11 @@ func TestAccGluuOpenidClient_createAfterManualDestroy(t *testing.T) {
 	clientId := acctest.RandomWithPrefix("tf-acc")
 
 	resource.Test(t, resource.TestCase{
-		CheckDestroy:      testAccCheckGluuOpenidClientDestroy(),
+		CheckDestroy: testAccCheckGluuOpenidClientDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testGluuOpenidClient_basic(clientId),
-				Check: resource.ComposeTestCheckFunc(
-				),
+				Check:  resource.ComposeTestCheckFunc(),
 			},
 			{
 				PreConfig: func() {
@@ -68,12 +66,11 @@ func TestAccGluuOpenidClient(t *testing.T) {
 	clientId := acctest.RandomWithPrefix("tf-acc")
 
 	resource.Test(t, resource.TestCase{
-		CheckDestroy:      testAccCheckGluuOpenidClientDestroy(),
+		CheckDestroy: testAccCheckGluuOpenidClientDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testGluuOpenidClient(clientId),
-				Check: resource.ComposeTestCheckFunc(
-				),
+				Check:  resource.ComposeTestCheckFunc(),
 			},
 		},
 	})
@@ -84,37 +81,33 @@ func TestAccGluuOpenidClient_updateInPlace(t *testing.T) {
 	clientId := acctest.RandomWithPrefix("tf-acc")
 
 	openidClientBefore := &gluu.OpenidClient{
-		Inum:                  clientId,
-		RedirectUris:         []string{acctest.RandString(10), acctest.RandString(10), acctest.RandString(10), acctest.RandString(10)},
+		Inum:         clientId,
+		RedirectUris: []string{acctest.RandString(10), acctest.RandString(10), acctest.RandString(10), acctest.RandString(10)},
 	}
 
 	openidClientAfter := &gluu.OpenidClient{
-		Inum:                  clientId,
-		RedirectUris:         []string{acctest.RandString(10), acctest.RandString(10)},
+		Inum:         clientId,
+		RedirectUris: []string{acctest.RandString(10), acctest.RandString(10)},
 	}
 
 	resource.Test(t, resource.TestCase{
-		CheckDestroy:      testAccCheckGluuOpenidClientDestroy(),
+		CheckDestroy: testAccCheckGluuOpenidClientDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testGluuOpenidClient_fromInterface(openidClientBefore),
-				Check: resource.ComposeTestCheckFunc(
-				),
+				Check:  resource.ComposeTestCheckFunc(),
 			},
 			{
 				Config: testGluuOpenidClient_fromInterface(openidClientAfter),
-				Check: resource.ComposeTestCheckFunc(
-				),
+				Check:  resource.ComposeTestCheckFunc(),
 			},
 			{
 				Config: testGluuOpenidClient_basic(clientId),
-				Check: resource.ComposeTestCheckFunc(
-				),
+				Check:  resource.ComposeTestCheckFunc(),
 			},
 		},
 	})
 }
-
 
 func testAccCheckGluuOpenidClientDestroy() resource.TestCheckFunc {
 	return func(s *terraform.State) error {
@@ -134,7 +127,6 @@ func testAccCheckGluuOpenidClientDestroy() resource.TestCheckFunc {
 		return nil
 	}
 }
-
 
 func testGluuOpenidClient_basic(clientId string) string {
 	return fmt.Sprintf(`

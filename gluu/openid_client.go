@@ -2,14 +2,14 @@ package gluu
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 )
 
 type OpenidClient struct {
-	Id                 string            `json:"id,omitempty"`
-	Inum               string            `json:"inum"`
-	ClientSecret       string            `json:"secret,omitempty"`
-	RedirectUris       []string          `json:"redirectUris"`
+	Inum         string   `json:"inum"`
+	ClientSecret string   `json:"clientSecret,omitempty"`
+	RedirectUris []string `json:"redirectUris"`
 }
 
 type OpenidClientSecret struct {
@@ -17,41 +17,27 @@ type OpenidClientSecret struct {
 	Value string `json:"value"`
 }
 
-func (gluuClient *GluuClient) NewOpenidClient(ctx context.Context, client *OpenidClient) error {
+func (gluuClient *GluuClient) NewOpenidClient(ctx context.Context, client *OpenidClient) (*OpenidClient, error) {
+	var clientResponse OpenidClient
 
-	_, _, err := gluuClient.post(ctx, "/clients", client)
+	body, err := gluuClient.post(ctx, "/clients", client)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	err = json.Unmarshal(body, &clientResponse)
 
-	return nil
-}
-
-func (gluuClient *GluuClient) GetOpenidClients(ctx context.Context, withSecrets bool) ([]*OpenidClient, error) {
-	var clients []*OpenidClient
-	var clientSecret OpenidClientSecret
-
-	err := gluuClient.get(ctx, "/clients", &clients, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, client := range clients {
-		if !withSecrets {
-			continue
-		}
-
-		client.ClientSecret = clientSecret.Value
-	}
-
-	return clients, nil
+	return &clientResponse, nil
 }
 
 func (gluuClient *GluuClient) GetOpenidClient(ctx context.Context, id string) (*OpenidClient, error) {
 	var client OpenidClient
 	var clientSecret OpenidClientSecret
 
-	err := gluuClient.get(ctx, fmt.Sprintf("/clients/%s", client.Inum), &client, nil)
+	err := gluuClient.get(ctx, fmt.Sprintf("/clients/%s", id), &client, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -69,4 +55,3 @@ func (gluuClient *GluuClient) UpdateOpenidClient(ctx context.Context, client *Op
 func (gluuClient *GluuClient) DeleteOpenidClient(ctx context.Context, client *OpenidClient) error {
 	return gluuClient.delete(ctx, fmt.Sprintf("/clients/%s", client.Inum), nil)
 }
-
